@@ -1,0 +1,161 @@
+*&---------------------------------------------------------------------*
+*& Report ZFLIGHT_RESERVATION_REPORT_23
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zflight_reservation_report_23.
+
+TABLES: scarr,
+        spfli,
+        sflight.
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-001.
+
+SELECT-OPTIONS:
+  s_carrid FOR scarr-carrid,
+  s_cityfr FOR spfli-cityfrom NO INTERVALS,
+  s_cityto FOR spfli-cityto NO INTERVALS,
+  s_fldate FOR sflight-fldate.
+
+SELECTION-SCREEN END OF BLOCK b1.
+*SELECT-OPTIONS:
+*  s_carrid FOR scarr-carrid,
+*  s_cityfr FOR spfli-cityfrom NO INTERVALS,
+*  s_cityto FOR spfli-cityto NO INTERVALS,
+*  s_fldate FOR sflight-fldate.
+
+TYPES: BEGIN OF lty_flight,
+         carrid   TYPE scarr-carrid,
+         carrname TYPE scarr-carrname,
+         connid   TYPE spfli-connid,
+         cityfrom TYPE spfli-cityfrom,
+         cityto   TYPE spfli-cityto,
+         fldate   TYPE sflight-fldate,
+         seatsmax TYPE sflight-seatsmax,
+         seatsocc TYPE sflight-seatsocc,
+       END OF lty_flight.
+
+DATA:
+  lt_flight TYPE TABLE OF lty_flight,
+  wa_flight TYPE lty_flight,
+  lv_available TYPE i,
+  lv_percentage TYPE p DECIMALS 2.
+
+START-OF-SELECTION.
+
+  SELECT
+    a~carrid,
+    a~carrname,
+    b~connid,
+    b~cityfrom,
+    b~cityto,
+    c~fldate,
+    c~seatsmax,
+    c~seatsocc
+    FROM scarr AS a
+    INNER JOIN spfli AS b
+      ON a~carrid = b~carrid
+    INNER JOIN sflight AS c
+      ON b~carrid = c~carrid
+     AND b~connid = c~connid
+    WHERE a~carrid   IN @s_carrid
+      AND b~cityfrom IN @s_cityfr
+      AND b~cityto   IN @s_cityto
+      AND c~fldate   IN @s_fldate
+    INTO TABLE @lt_flight.
+
+  IF lt_flight IS INITIAL.
+
+    MESSAGE 'No flight data found for the selected criteria' TYPE 'I'.
+
+  ELSE.
+
+    WRITE: / '======================================================================'.
+    WRITE: / '                     FLIGHT RESERVATION REPORT'.
+    WRITE: / '======================================================================'.
+    SKIP.
+
+    WRITE:
+      / 'Carrier',
+        12 'Airline',
+        38 'Connection',
+        51 'From',
+        69 'To',
+        87 'Flight Date',
+        101 'Max',
+        110 'Occupied',
+        122 'Available'.
+
+    ULINE.
+
+    LOOP AT lt_flight INTO wa_flight.
+
+      lv_available = wa_flight-seatsmax - wa_flight-seatsocc.
+
+      HIDE:
+        wa_flight-carrid,
+        wa_flight-carrname,
+        wa_flight-connid,
+        wa_flight-cityfrom,
+        wa_flight-cityto,
+        wa_flight-fldate,
+        wa_flight-seatsmax,
+        wa_flight-seatsocc.
+
+      WRITE:
+        / wa_flight-carrid,
+          12 wa_flight-carrname,
+          38 wa_flight-connid,
+          51 wa_flight-cityfrom,
+          69 wa_flight-cityto,
+          87 wa_flight-fldate,
+          101 wa_flight-seatsmax,
+          110 wa_flight-seatsocc,
+          122 lv_available.
+
+    ENDLOOP.
+
+    SKIP.
+    ULINE.
+    WRITE: / 'Double-click any flight to view detailed information.'.
+
+  ENDIF.
+
+AT LINE-SELECTION.
+
+  lv_available = wa_flight-seatsmax - wa_flight-seatsocc.
+
+  IF wa_flight-seatsmax > 0.
+    lv_percentage =
+      ( wa_flight-seatsocc * 100 ) / wa_flight-seatsmax.
+  ENDIF.
+
+  WRITE: / '======================================================================'.
+  WRITE: / '                       FLIGHT DETAILS'.
+  WRITE: / '======================================================================'.
+  SKIP.
+
+  WRITE: / 'Airline          :', wa_flight-carrname.
+  WRITE: / 'Carrier ID       :', wa_flight-carrid.
+  WRITE: / 'Connection ID    :', wa_flight-connid.
+  WRITE: / 'Departure City   :', wa_flight-cityfrom.
+  WRITE: / 'Arrival City     :', wa_flight-cityto.
+  WRITE: / 'Flight Date      :', wa_flight-fldate.
+  WRITE: / 'Maximum Seats    :', wa_flight-seatsmax.
+  WRITE: / 'Occupied Seats   :', wa_flight-seatsocc.
+  WRITE: / 'Available Seats  :', lv_available.
+  WRITE: / 'Occupancy        :', lv_percentage, '%'.
+
+  SKIP.
+
+  IF lv_available = 0.
+    WRITE: / 'Flight Status    : FULL'.
+  ELSEIF lv_percentage >= 80.
+    WRITE: / 'Flight Status    : ALMOST FULL'.
+  ELSE.
+    WRITE: / 'Flight Status    : SEATS AVAILABLE'.
+  ENDIF.
+
+  SKIP.
+ WRITE: / '======================================================================'.
+  WRITE: / '======================================================================'.
