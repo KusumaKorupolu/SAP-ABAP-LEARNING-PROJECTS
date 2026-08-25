@@ -1,0 +1,116 @@
+*&---------------------------------------------------------------------*
+*& Report Z_FLIGHT_23
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT Z_FLIGHT_23.
+
+TYPE-POOLS: slis.
+
+TABLES: sflight.
+
+SELECT-OPTIONS:
+s_carr FOR sflight-carrid,
+s_conn FOR sflight-connid.
+
+DATA: lt_sflight TYPE TABLE OF sflight,
+      ls_sflight TYPE sflight.
+
+DATA: lt_fieldcat TYPE slis_t_fieldcat_alv,
+      ls_fieldcat TYPE slis_fieldcat_alv.
+
+DATA: ls_layout TYPE slis_layout_alv.
+
+DATA: lt_events TYPE slis_t_event,
+      ls_event TYPE slis_alv_event.
+
+START-OF-SELECTION.
+
+SELECT *
+  FROM sflight
+  INTO TABLE lt_sflight
+  WHERE carrid IN s_carr
+    AND connid IN s_conn.
+
+IF lt_sflight IS INITIAL.
+  MESSAGE 'No Records Found' TYPE 'I'.
+  EXIT.
+ENDIF.
+
+PERFORM build_fieldcat.
+PERFORM build_events.
+PERFORM display_alv.
+
+
+FORM build_fieldcat.
+
+  DEFINE add_field.
+    CLEAR ls_fieldcat.
+    ls_fieldcat-fieldname = &1.
+    ls_fieldcat-seltext_m = &2.
+    APPEND ls_fieldcat TO lt_fieldcat.
+  END-OF-DEFINITION.
+
+  add_field 'CARRID' 'Carrier'.
+  add_field 'CONNID' 'Connection'.
+  add_field 'FLDATE' 'Flight Date'.
+  add_field 'PRICE' 'Price'.
+  add_field 'CURRENCY' 'Currency'.
+  add_field 'SEATSMAX' 'Seats Max'.
+  add_field 'SEATSOCC' 'Seats Occupied'.
+
+ENDFORM.
+
+
+FORM build_events.
+
+CALL FUNCTION 'REUSE_ALV_EVENTS_GET'
+  EXPORTING
+    i_list_type = 0
+  IMPORTING
+    et_events = lt_events.
+
+READ TABLE lt_events INTO ls_event
+WITH KEY name = slis_ev_user_command.
+
+IF sy-subrc = 0.
+  ls_event-form = 'USER_COMMAND'.
+  MODIFY lt_events FROM ls_event INDEX sy-tabix.
+ENDIF.
+
+ENDFORM.
+
+
+FORM display_alv.
+
+ls_layout-zebra = 'X'.
+ls_layout-colwidth_optimize = 'X'.
+
+CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+  EXPORTING
+    i_callback_program = sy-repid
+    is_layout = ls_layout
+    it_fieldcat = lt_fieldcat
+    it_events = lt_events
+  TABLES
+    t_outtab = lt_sflight.
+
+ENDFORM.
+
+
+FORM user_command
+USING r_ucomm LIKE sy-ucomm
+      rs_selfield TYPE slis_selfield.
+
+IF r_ucomm = '&IC1'.
+
+  READ TABLE lt_sflight INTO ls_sflight INDEX rs_selfield-tabindex.
+
+  IF sy-subrc = 0.
+    MESSAGE |You selected Carrier { ls_sflight-carrid } Flight { ls_sflight-connid }|
+      TYPE 'I'.
+  ENDIF.
+
+ENDIF.
+
+ENDFORM.
