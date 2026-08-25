@@ -1,0 +1,111 @@
+*&---------------------------------------------------------------------*
+*& Report ZEMPLOYEE_PAYROLL_REPORT_24
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zemployee_payroll_report_24.
+
+TYPES : BEGIN OF lty_data,
+          emp_id(10) TYPE c,
+          name(10)   TYPE c,
+          dept(5)    TYPE c,
+          base       TYPE p LENGTH 8 DECIMALS 2,
+          hra        TYPE p LENGTH 8  DECIMALS 2,
+          da         TYPE p LENGTH 8  DECIMALS 2,
+          pf         TYPE p LENGTH 8  DECIMALS 2,
+          gross      TYPE p LENGTH 8  DECIMALS 2,
+          net        TYPE p LENGTH 8  DECIMALS 2,
+        END OF lty_data.
+
+DATA : lt_data TYPE TABLE OF zemployee_24.
+DATA : ltemp_data TYPE TABLE OF zemployee_24.
+DATA : lwa_data TYPE zemployee_24.
+FIELD-SYMBOLS : <lfs_data> TYPE zemployee_24.
+
+lwa_data-emp_id = 104.
+lwa_data-name = 'priya'.
+lwa_data-dept = 'it'.
+lwa_data-base = '60000'.
+APPEND lwa_data TO lt_data.
+CLEAR lwa_data.
+
+lwa_data-emp_id = 102.
+lwa_data-name = 'anu'.
+lwa_data-dept = 'HR'.
+lwa_data-base = '50000'.
+APPEND lwa_data TO lt_data.
+CLEAR lwa_data.
+
+lwa_data-emp_id = 105.
+lwa_data-name = 'ravi'.
+lwa_data-dept = 'sales'.
+lwa_data-base = '45000'.
+APPEND lwa_data TO lt_data.
+CLEAR lwa_data.
+
+lwa_data-emp_id = 101.
+lwa_data-name = 'ram'.
+lwa_data-dept = 'it'.
+lwa_data-base = '35000'.
+APPEND lwa_data TO lt_data.
+CLEAR lwa_data.
+
+lwa_data-emp_id = 103.
+lwa_data-name = 'john'.
+lwa_data-dept = 'admin'.
+lwa_data-base = '25000'.
+APPEND lwa_data TO lt_data.
+CLEAR lwa_data.
+
+LOOP AT lt_data INTO lwa_data.
+  lwa_data-hra = lwa_data-base * 20 / 100.
+  lwa_data-da = lwa_data-base * 15 / 100.
+  lwa_data-pf = lwa_data-base * 12 / 100.
+  lwa_data-gross = lwa_data-base + lwa_data-hra + lwa_data-da.
+  lwa_data-net = lwa_data-gross - lwa_data-pf.
+
+  MODIFY lt_data FROM lwa_data.
+
+ENDLOOP.
+MODIFY  zemployee_24 FROM TABLE lt_data.
+
+SORT lt_data BY net DESCENDING.
+
+LOOP AT lt_data INTO lwa_data.
+  IF  lwa_data-net > 50000.
+    WRITE : / lwa_data-emp_id , lwa_data-name,lwa_data-dept ,lwa_data-base, lwa_data-hra,  lwa_data-da,  lwa_data-pf,  lwa_data-gross,lwa_data-net.
+  ELSE.
+    WRITE : / 'not found'.
+  ENDIF.
+ENDLOOP.
+READ TABLE lt_data INTO lwa_data WITH KEY emp_id = 1004.
+IF sy-subrc = 0.
+  WRITE : / lwa_data-emp_id , lwa_data-name,lwa_data-dept ,lwa_data-base, lwa_data-hra,  lwa_data-da,  lwa_data-pf,  lwa_data-gross,lwa_data-net.
+
+ENDIF.
+
+LOOP AT lt_data INTO lwa_data.
+  COLLECT lwa_data INTO ltemp_data.
+ENDLOOP.
+
+LOOP AT lt_data INTO lwa_data.
+  WRITE : / lwa_data-emp_id , lwa_data-name,lwa_data-dept ,lwa_data-base, lwa_data-hra,  lwa_data-da,  lwa_data-pf,  lwa_data-gross,lwa_data-net.
+
+ENDLOOP.
+*new abap syntax to declare  .
+SELECT * FROM zemployee_24 INTO TABLE @DATA(lt_it_data) WHERE dept = 'HR' .
+
+LOOP AT  lt_it_data ASSIGNING FIELD-SYMBOL(<lfs_data1>).
+  <lfs_data>-base = <lfs_data>-base + <lfs_data>-base * 5 / 100.
+ENDLOOP.
+*LOOP AT lt_it_data into lwa_data.
+*MODIFY zemployee_24 from lwa_data.
+*ENDLOOP.
+MODIFY zemployee_24 from table lt_it_data.
+LOOP AT lt_it_data INTO lwa_data.
+  WRITE : /.
+  WRITE : / lwa_data-emp_id , lwa_data-name,lwa_data-dept ,lwa_data-base, lwa_data-hra,  lwa_data-da,  lwa_data-pf,  lwa_data-gross,lwa_data-net.
+
+ENDLOOP.*&---------------------------------------------------------------------*
+
+
